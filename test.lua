@@ -1,4 +1,6 @@
 local layout = require "layout"
+-- Datalist is like a simpler version of yaml, or an enhanced version of json.
+-- https://github.com/cloudwu/datalist
 local _, datalist = pcall(require, "datalist")
 
 local doc
