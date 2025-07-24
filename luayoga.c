@@ -66,12 +66,31 @@ lnodeCalc(lua_State *L) {
 	return 0;
 }
 
+struct pos {
+	float x;
+	float y;
+};
+
+static void
+get_pos(struct pos *p, YGNodeRef node) {
+	p->x = 0;
+	p->y = 0;
+	
+	while (node) {
+		p->x += YGNodeLayoutGetLeft(node);
+		p->y += YGNodeLayoutGetTop(node);
+		node = YGNodeGetParent(node);
+	}
+}
+
 static int
 lnodeGet(lua_State *L) {
 	YGNodeRef node = lua_touserdata(L, 1);
+	struct pos p;
+	get_pos(&p, node);
 	float r[] = {
-		YGNodeLayoutGetLeft(node),
-		YGNodeLayoutGetTop(node),
+		p.x,
+		p.y,
 		YGNodeLayoutGetWidth(node),
 		YGNodeLayoutGetHeight(node)
 	};
@@ -427,6 +446,18 @@ getEnum(lua_State *L, int type, const char *pname) {
 	return luaL_error(L, "Invalid enum %s for %s", luaL_tolstring(L, -2, NULL), pname);
 }
 
+static int
+getEnumHigh(lua_State *L, int type, const char *pname) {
+	int e = getEnum(L, type, pname);
+	return e >> 8;
+}
+
+static int
+getEnumLow(lua_State *L, int type, const char *pname) {
+	int e = getEnum(L, type, pname);
+	return e & 0xff;
+}
+
 static void
 lsetFlexDirection(lua_State *L, YGNodeRef node) {
 	YGNodeStyleSetFlexDirection(node, getEnum(L, FlexDirection, "flex-direction"));
@@ -434,22 +465,22 @@ lsetFlexDirection(lua_State *L, YGNodeRef node) {
 
 static void
 lsetJustifyContent(lua_State *L, YGNodeRef node) {
-	YGNodeStyleSetJustifyContent(node, getEnum(L, Justify, "justify-content"));
+	YGNodeStyleSetJustifyContent(node, getEnumHigh(L, Justify, "justify-content"));
 }
 
 static void
 lsetAlignItems(lua_State *L, YGNodeRef node) {
-	YGNodeStyleSetAlignItems(node, getEnum(L, Align, "align-items"));
+	YGNodeStyleSetAlignItems(node, getEnumLow(L, Align, "align-items"));
 }
 
 static void
 lsetAlignContent(lua_State *L, YGNodeRef node) {
-	YGNodeStyleSetAlignContent(node, getEnum(L, Align, "align-content"));
+	YGNodeStyleSetAlignContent(node, getEnumLow(L, Align, "align-content"));
 }
 
 static void
 lsetAlignSelf(lua_State *L, YGNodeRef node) {
-	YGNodeStyleSetAlignSelf(node, getEnum(L, Align, "align-self"));
+	YGNodeStyleSetAlignSelf(node, getEnumLow(L, Align, "align-self"));
 }
 
 static void
@@ -490,8 +521,18 @@ lsetTop(lua_State *L, YGNodeRef node) {
 }
 
 static void
+lsetBottom(lua_State *L, YGNodeRef node) {
+	setPosition(L, node, YGEdgeBottom);
+}
+
+static void
 lsetLeft(lua_State *L, YGNodeRef node) {
 	setPosition(L, node, YGEdgeLeft);
+}
+
+static void
+lsetRight(lua_State *L, YGNodeRef node) {
+	setPosition(L, node, YGEdgeRight);
 }
 
 static int
@@ -549,7 +590,9 @@ luaopen_layout_yoga(lua_State *L) {
 		{ "flex", lsetFlex },
 		{ "position", lsetPosition },
 		{ "top", lsetTop },
+		{ "bottom", lsetBottom },
 		{ "left", lsetLeft },
+		{ "right", lsetRight },
 	};
 	int n = sizeof(setter) / sizeof(setter[0]);
 	int i;
@@ -594,8 +637,10 @@ luaopen_layout_yoga(lua_State *L) {
 		int v = 0;
 		if (lua_getfield(L, -1, estr[i].name) == LUA_TNUMBER) {
 			v = lua_tointeger(L, -1);
+			v = (v & ~0xffff) | ((v & 0xff) << 8);
 		}
 		lua_pop(L, 1);
+		// align use high 8bits
 		lua_pushinteger(L, estr[i].value | v);
 		lua_setfield(L, -2, estr[i].name);
 	}
