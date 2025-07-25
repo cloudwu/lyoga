@@ -145,7 +145,7 @@ lsetWidth(lua_State *L, YGNodeRef node) {
 	static const struct set_number setter = {
 		YGNodeStyleSetWidth,
 		YGNodeStyleSetWidthPercent,
-		NULL,
+		YGNodeStyleSetWidthAuto,
 		YGNodeStyleSetWidthMaxContent,
 		YGNodeStyleSetWidthFitContent,
 	};
